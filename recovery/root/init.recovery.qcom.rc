@@ -1,0 +1,58 @@
+import /init.recovery.qcom_decrypt.rc
+
+# USB gadget via configfs : le kernel n'a pas CONFIG_USB_G_ANDROID, et init.rc
+# ne positionne ni sys.usb.configfs ni sys.usb.controller (verifie dans le ramdisk).
+on init
+    setprop sys.usb.configfs 1
+    setprop sys.usb.controller ${ro.boot.usbcontroller}
+
+# lien /dev/block/bootdevice (libssd cherche la partition ssd par ce chemin)
+on fs
+    mkdir /dev/block/bootdevice 0755 root root
+    symlink /dev/block/by-name /dev/block/bootdevice/by-name
+
+service vendor.qseecomd /vendor/bin/qseecomd
+    class core
+    user root
+    group root
+    disabled
+    seclabel u:r:recovery:s0
+
+service vendor.keymaster-4-1 /vendor/bin/hw/android.hardware.keymaster@4.1-service-qti
+    class early_hal
+    user root
+    group root
+    disabled
+    seclabel u:r:recovery:s0
+
+service gatekeeper-1-0 /vendor/bin/hw/android.hardware.gatekeeper@1.0-service-qti
+    class early_hal
+    user root
+    group root
+    disabled
+    seclabel u:r:recovery:s0
+
+# vendor réel + modem + persist (ro), HAL, puis keystore2 relancé
+on property:init.svc.recovery=running
+    wait /dev/block/by-name/vendor 60
+    mkdir /vendor 0755 root root
+    mount ext4 /dev/block/by-name/vendor /vendor ro
+    mkdir /vendor/firmware_mnt 0755 root root
+    mount vfat /dev/block/by-name/modem${ro.boot.slot_suffix} /vendor/firmware_mnt ro
+    mkdir /mnt/vendor/persist 0771 root root
+    mount ext4 /dev/block/by-name/persist /mnt/vendor/persist ro nosuid nodev noatime
+    wait /dev/qseecom 10
+    start vendor.qseecomd
+    exec u:r:recovery:s0 root root -- /system/bin/sleep 4
+    start vendor.keymaster-4-1
+    start gatekeeper-1-0
+    exec u:r:recovery:s0 root root -- /system/bin/sleep 2
+    restart keystore2
+
+# QSEECOM-FIX: qseecomd redescend en 'system' apres son init ; il doit pouvoir ouvrir ces noeuds
+on init
+    wait /dev/qseecom 5
+    chown system drmrpc /dev/qseecom
+    chmod 0660 /dev/qseecom
+    chown system drmrpc /dev/smcinvoke
+    chmod 0660 /dev/smcinvoke

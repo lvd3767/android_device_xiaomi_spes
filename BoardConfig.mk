@@ -5,6 +5,7 @@
 #
 
 DEVICE_PATH := device/xiaomi/spes
+KERNEL_PATH := device/xiaomi/spes-kernel
 
 # A/B
 AB_OTA_UPDATER := true
@@ -75,7 +76,7 @@ BOARD_USES_LEGACY_IMS_SEPOLICY := true
 
 # Kernel
 BOARD_KERNEL_BASE        := 0x00000000
-BOARD_KERNEL_IMAGE_NAME  := Image.gz
+BOARD_KERNEL_IMAGE_NAME  := Image
 BOARD_KERNEL_OFFSET      := 0x00008000
 BOARD_KERNEL_PAGESIZE    := 4096
 BOARD_RAMDISK_OFFSET     := 0x01000000
@@ -105,10 +106,11 @@ BOARD_KERNEL_CMDLINE += \
 BOARD_KERNEL_CMDLINE +=  init.is_dt2w_sensor=1
 BOARD_KERNEL_CMDLINE +=  init.is_st2w_sensor=1
 
-TARGET_KERNEL_ARCH := arm64
-TARGET_KERNEL_CONFIG := vendor/bengal-perf_defconfig asano.config vendor/xiaomi/spes.config
-TARGET_KERNEL_SOURCE := kernel/xiaomi/spes
-TARGET_LINUX_KERNEL_VERSION := 4.19
+TARGET_NO_KERNEL_OVERRIDE := true
+TARGET_KERNEL_SOURCE := $(KERNEL_PATH)/kernel-headers
+BOARD_PREBUILT_DTBOIMAGE := $(KERNEL_PATH)/dtbo.img
+BOARD_PREBUILT_DTBIMAGE_DIR := $(KERNEL_PATH)/dtb
+BOARD_MKBOOTIMG_ARGS += --dtb $(BOARD_PREBUILT_DTBIMAGE_DIR)/khaje.dtb
 
 # LMKD
 TARGET_LMKD_STATS_LOG := true
@@ -131,7 +133,12 @@ BOARD_SUPER_PARTITION_GROUPS := qti_dynamic_partitions
 BOARD_QTI_DYNAMIC_PARTITIONS_PARTITION_LIST := system system_ext product vendor
 BOARD_QTI_DYNAMIC_PARTITIONS_SIZE := 9122611200
 
--include vendor/lineage/config/BoardConfigReservedSize.mk
+BOARD_PRODUCTIMAGE_EXTFS_INODE_COUNT := -1
+BOARD_PRODUCTIMAGE_PARTITION_RESERVED_SIZE := 629145600
+BOARD_SYSTEMIMAGE_EXTFS_INODE_COUNT := -1
+BOARD_SYSTEMIMAGE_PARTITION_RESERVED_SIZE := 419430400
+BOARD_SYSTEM_EXTIMAGE_EXTFS_INODE_COUNT := -1
+BOARD_SYSTEM_EXTIMAGE_PARTITION_RESERVED_SIZE := 419430400
 BOARD_VENDORIMAGE_PARTITION_RESERVED_SIZE := 104857600
 
 BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
@@ -175,12 +182,11 @@ ENABLE_VENDOR_RIL_SERVICE := true
 TARGET_SCREEN_DENSITY := 440
 
 # Security patch level
-VENDOR_SECURITY_PATCH := 2025-04-01
+VENDOR_SECURITY_PATCH := 2099-12-31
 
 # Sepolicy
-include device/lineage/sepolicy/libperfmgr/sepolicy.mk
-include device/qcom/sepolicy_vndr/SEPolicy.mk
-include device/lineage/sepolicy/libion/sepolicy.mk
+# [orangefox_helper] include device/lineage/sepolicy/libperfmgr/sepolicy.mk
+# [orangefox_helper] include device/qcom/sepolicy_vndr/SEPolicy.mk
 SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/private
 SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/public
 BOARD_VENDOR_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
@@ -218,6 +224,32 @@ WIFI_HIDL_UNIFIED_SUPPLICANT_SERVICE_RC_ENTRY := true
 WPA_SUPPLICANT_VERSION := VER_0_8_X
 
 # Inherit from the proprietary version
-include vendor/xiaomi/spes/BoardConfigVendor.mk
+# [orangefox_helper] include vendor/xiaomi/spes/BoardConfigVendor.mk
 
-SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += device/xiaomi/spes/sepolicy/private
+# >>> orangefox_helper (decryptage) >>>
+TARGET_BOARD_PLATFORM := bengal
+BOARD_USES_QCOM_FBE_DECRYPTION := true
+BOARD_USES_METADATA_PARTITION := true
+TW_INCLUDE_CRYPTO := true
+TW_INCLUDE_CRYPTO_FBE := true
+TW_INCLUDE_FBE_METADATA_DECRYPT := true
+PLATFORM_VERSION := 99.87.36
+PLATFORM_SECURITY_PATCH := 2099-12-31
+VENDOR_SECURITY_PATCH := 2099-12-31
+TARGET_SCREEN_WIDTH := 1080
+TARGET_SCREEN_HEIGHT := 2400
+TW_THEME := portrait_hdpi
+TARGET_PREBUILT_KERNEL := device/xiaomi/spes-kernel/Image
+# <<< orangefox_helper <<<
+
+# libsysutils est requise par recovery (bloc FBE) mais livrée dans le ramdisk
+# seulement avec ces deux flags (bootable/recovery/prebuilt/Android.mk:360-364)
+TWRP_INCLUDE_LOGCAT := true
+TARGET_USES_LOGD := true
+PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
+
+# QCOM-DECRYPT-BOARD
+BOARD_USES_QCOM_FBE_DECRYPTION := true
+TW_INCLUDE_CRYPTO := true
+TW_INCLUDE_CRYPTO_FBE := true
+TW_INCLUDE_FBE_METADATA_DECRYPT := true

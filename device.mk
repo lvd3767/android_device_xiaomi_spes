@@ -1,4 +1,4 @@
-
+#
 # Copyright (C) 2022 The LineageOS Project
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -30,8 +30,6 @@ PRODUCT_USE_DYNAMIC_PARTITIONS := true
 
 # API level
 PRODUCT_SHIPPING_API_LEVEL := 30
-
-PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false
 
 # A/B
 AB_OTA_POSTINSTALL_CONFIG += \
@@ -121,6 +119,7 @@ PRODUCT_COPY_FILES += \
 
 PRODUCT_COPY_FILES += \
     frameworks/av/services/audiopolicy/config/audio_policy_volumes.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_policy_volumes.xml \
+    frameworks/av/services/audiopolicy/config/bluetooth_audio_policy_configuration_7_0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/bluetooth_audio_policy_configuration_7_0.xml \
     frameworks/av/services/audiopolicy/config/default_volume_tables.xml:$(TARGET_COPY_OUT_VENDOR)/etc/default_volume_tables.xml \
     frameworks/av/services/audiopolicy/config/r_submix_audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/r_submix_audio_policy_configuration.xml \
     frameworks/av/services/audiopolicy/config/usb_audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/usb_audio_policy_configuration.xml
@@ -146,7 +145,8 @@ PRODUCT_PACKAGES += \
     android.hardware.camera.provider@2.4-service_64
 
 PRODUCT_PACKAGES += \
-    libcamera2ndk_vendor 
+    libcamera2ndk_vendor \
+    libstdc++_vendor
 
 PRODUCT_PACKAGES += \
     vendor.qti.hardware.camera.device@1.0.vendor
@@ -159,6 +159,10 @@ PRODUCT_COPY_FILES += \
 # Consumer IR
 PRODUCT_PACKAGES += \
     android.hardware.ir-service.example
+
+# Dex/ART optimization
+PRODUCT_ART_TARGET_INCLUDE_DEBUG_BUILD := false
+USE_DEX2OAT_DEBUG := false
 
 # Display
 PRODUCT_PACKAGES += \
@@ -177,6 +181,8 @@ PRODUCT_PACKAGES += \
     libtinyxml \
     libvulkan
 
+PRODUCT_PACKAGES += \
+    disable_configstore
 
 PRODUCT_PACKAGES += \
     gralloc.qcom
@@ -184,7 +190,11 @@ PRODUCT_PACKAGES += \
 # DRM
 PRODUCT_PACKAGES += \
     android.hardware.drm@1.4.vendor \
-    com.android.hardware.drm.clearkey
+    android.hardware.drm-service.clearkey
+
+# Fastbootd
+PRODUCT_PACKAGES += \
+    fastbootd
 
 # Fingerprint
 PRODUCT_PACKAGES += \
@@ -202,14 +212,13 @@ PRODUCT_PACKAGES += \
 
 # Health
 PRODUCT_PACKAGES += \
-    android.hardware.health@2.1.vendor \
     android.hardware.health-service.qti
 
 # HIDL
 PRODUCT_PACKAGES += \
-    android.hidl.memory.block@1.0.vendor \
-    libhidltransport.vendor \
-    libhwbinder.vendor
+    android.hidl.base@1.0 \
+    android.hidl.base@1.0.vendor \
+    android.hidl.memory.block@1.0.vendor
 
 # Hotword Enrollment
 PRODUCT_COPY_FILES += \
@@ -239,7 +248,6 @@ PRODUCT_PACKAGES += \
 
 # Input
 PRODUCT_COPY_FILES += \
-    $(LOCAL_PATH)/configs/excluded-input-devices.xml:$(TARGET_COPY_OUT_VENDOR)/etc/excluded-input-devices.xml \
     $(LOCAL_PATH)/configs/keylayout/gpio-keys.kl:$(TARGET_COPY_OUT_SYSTEM)/usr/keylayout/gpio-keys.kl \
     $(LOCAL_PATH)/configs/keylayout/uinput-fpc.kl:$(TARGET_COPY_OUT_SYSTEM)/usr/keylayout/uinput-fpc.kl \
     $(LOCAL_PATH)/configs/keylayout/uinput-goodix.kl:$(TARGET_COPY_OUT_SYSTEM)/usr/keylayout/uinput-goodix.kl
@@ -250,12 +258,15 @@ PRODUCT_PACKAGES += \
     IPACM_cfg.xml \
     libipanat \
     liboffloadhal
-# ION
-$(call soong_config_set_bool,libion,legacy_impl,true)
 
 # IRQ
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/msm_irqbalance.conf:$(TARGET_COPY_OUT_VENDOR)/etc/msm_irqbalance.conf
+
+# Kernel
+LOCAL_KERNEL := device/xiaomi/spes-kernel/Image
+PRODUCT_COPY_FILES += \
+	$(LOCAL_KERNEL):kernel
 
 # Lights
 PRODUCT_PACKAGES += \
@@ -283,8 +294,6 @@ PRODUCT_PACKAGES += \
 
 PRODUCT_COPY_FILES += \
     $(call find-copy-subdir-files,*,$(LOCAL_PATH)/configs/media/,$(TARGET_COPY_OUT_VENDOR)/etc)
-    $(call soong_config_set_bool,stagefright,target_use_legacy_mediacodecbuffer_setrange,true)
-    $(call soong_config_set_bool,stagefright,target_restore_surface_generation_after_reconnect,true)
 
 # NFC
 PRODUCT_PACKAGES += \
@@ -340,11 +349,8 @@ PRODUCT_COPY_FILES += \
 PRODUCT_PACKAGES += \
     android.hardware.power@1.3.vendor \
     android.hardware.power-service.lineage-libperfmgr \
-    libqti-perfd-client
-
-# SKU properties
-PRODUCT_COPY_FILES += \
-    $(call find-copy-subdir-files,*,$(LOCAL_PATH)/sku/properties/,$(TARGET_COPY_OUT_ODM)/etc)
+    libqti-perfd-client \
+    sendhint
 
 # Public libraries
 PRODUCT_COPY_FILES += \
@@ -379,7 +385,7 @@ PRODUCT_COPY_FILES += \
 PRODUCT_SOONG_NAMESPACES += \
     $(LOCAL_PATH) \
     hardware/google/interfaces \
-    hardware/google/pixel/power-libperfmgr \
+    hardware/google/pixel \
     hardware/lineage/interfaces/power-libperfmgr \
     hardware/qcom-caf/common/libqti-perfd-client \
     hardware/xiaomi \
@@ -405,10 +411,6 @@ PRODUCT_PACKAGES += \
 PRODUCT_BOOT_JARS += \
     telephony-ext \
     xiaomi-telephony-stub
-
-# Thermal
-PRODUCT_PACKAGES += \
-    android.hardware.thermal-service.qti
 
 # Thermal configs
 PRODUCT_COPY_FILES += \
@@ -444,9 +446,11 @@ PRODUCT_PACKAGES += \
     vndservicemanager
 
 # Vibrator
-$(call soong_config_set_bool, vibrator, vibratortargets, vibratoraidlV2target)
+PRODUCT_PACKAGES += \
+    vendor.qti.hardware.vibrator.service
 
-$(call inherit-product, vendor/qcom/opensource/vibrator/vibrator-vendor-product.mk)
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/configs/excluded-input-devices.xml:$(TARGET_COPY_OUT_VENDOR)/etc/excluded-input-devices.xml
 
 # WiFi
 PRODUCT_PACKAGES += \
@@ -470,17 +474,25 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/wifi/wpa_supplicant_overlay.conf:$(TARGET_COPY_OUT_VENDOR)/etc/wifi/wpa_supplicant_overlay.conf
 
 # Pixel Lockscreen Clocks
-#PRODUCT_SOONG_NAMESPACES += vendor/pixelos/pixel-clocks
-#$(call inherit-product, vendor/pixelos/pixel-clocks/products/clocks.mk)
-#$(call inherit-product, vendor/pixelos/pixel-clocks/common/common-vendor.mk)
+PRODUCT_SOONG_NAMESPACES += vendor/pixelos/pixel-clocks
+$(call inherit-product, vendor/pixelos/pixel-clocks/products/clocks.mk)
+$(call inherit-product, vendor/pixelos/pixel-clocks/common/common-vendor.mk)
 
-#PRODUCT_PACKAGES += \
-#    SystemUIResPixelClocks
+PRODUCT_PACKAGES += \
+    SystemUIResPixelClocks
 
+PRODUCT_PACKAGES += \
+    OmniJaws
 
 # XiaomiParts
 include packages/apps/XiaomiParts/device.mk
 
+# >>> fox_decrypt_fix >>>
+OF_DEFAULT_KEYMASTER_VERSION := 4.1
+TW_FORCE_KEYMASTER_VER := true
+# <<< fox_decrypt_fix <<<
 
-# Temporary: disable FCM kernel requirement enforcement.
-PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false
+# QCOM-DECRYPT-DEVICE
+PRODUCT_PACKAGES += qcom_decrypt qcom_decrypt_fbe
+TW_FORCE_KEYMASTER_VER := true
+OF_DEFAULT_KEYMASTER_VERSION := 4.1
